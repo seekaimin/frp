@@ -1,0 +1,14 @@
+[
+  {
+      "DataPort": 9104,
+      "LocalServer": "127.0.0.1:8080",
+      "ProtocolType": 1,
+      "Server": "127.0.0.1:9101"
+  },
+  {
+      "DataPort": 9103,
+      "LocalServer": "127.0.0.1:5005",
+      "ProtocolType": 0,
+      "Server": "127.0.0.1:9101"
+  }
+]

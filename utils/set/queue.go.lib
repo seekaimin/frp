@@ -1,0 +1,226 @@
+package set
+
+import (
+	"sync"
+)
+
+type queueItem struct {
+	pre   *queueItem
+	next  *queueItem
+	value interface{}
+}
+
+//Queue 队列
+type Queue struct {
+	first int
+	last  int
+	items map[int]*queueItem
+	l     sync.Mutex
+}
+
+//New 创建一个新的队列
+func NewQueue() *Queue {
+	p := new(Queue)
+	p.l = sync.Mutex{}
+	p.Init()
+	return p
+}
+
+//Count 获取队列长度
+func (p *Queue) Count() int {
+	return len(p.items)
+}
+
+//Init 初始化
+func (p *Queue) Init() {
+	defer p.l.Unlock()
+	p.l.Lock()
+	p.items = make(map[int]*queueItem)
+	p.first = -1
+	p.last = -1
+}
+
+func (p *Queue) get(id int) *queueItem {
+	if id < 0 {
+		return nil
+	}
+	t, ok := p.items[id]
+	if !ok {
+		return nil
+	}
+	return t
+}
+
+func (p *Queue) remove(item *queueItem) {
+	if item == nil {
+		return
+	}
+	//pre
+	//pre := p.get(item.pre)
+	//next := p.get(item.next)
+	if item.pre < 0 {
+		//item 是第一个
+		p.first = item.next
+	}
+	if item.next < 0 {
+		//item 是第最后一个
+		p.last = item.pre
+	}
+	pre := p.get(item.pre)
+	next := p.get(item.next)
+	if pre != nil {
+		pre.next = item.next
+	}
+	if next != nil {
+		next.pre = item.pre
+	}
+	delete(p.items, item.id)
+}
+
+func (p *Queue) Remove(id int) {
+	defer p.l.Unlock()
+	p.l.Lock()
+	item := p.get(id)
+	p.remove(item)
+}
+
+//First 取出(并移除)第一个
+func (p *Queue) First() interface{} {
+	defer p.l.Unlock()
+	p.l.Lock()
+	item, ok := p.items[p.first]
+	if ok {
+		p.remove(item)
+		return item.value
+	}
+	return nil
+}
+
+//Last 取出(并移除)第最后一个
+func (p *Queue) Last() interface{} {
+	defer p.l.Unlock()
+	p.l.Lock()
+	item := p.get(p.last)
+	if item != nil {
+		p.remove(item)
+		return item.value
+	}
+	return nil
+}
+func (p *Queue) builderID() int {
+	if p.first == -1 || p.last == -1 {
+		return 0
+	}
+	var id int
+	id = 0
+	for {
+		flag := p.isUse(id)
+		if !flag {
+			return id
+		}
+		id++
+	}
+}
+func (p *Queue) isUse(id int) bool {
+	for k, _ := range p.items {
+		if k == id {
+			return true
+		}
+	}
+	return false
+}
+
+//PushFront 在最前面添加
+func (p *Queue) PushFront(val interface{}) int {
+	defer p.l.Unlock()
+	p.l.Lock()
+	v := new(queueItem)
+	v.pre = -1
+	v.id = p.builderID()
+	v.value = val
+	first := p.get(p.first)
+	p.first = v.id
+	if first == nil {
+		v.pre = -1
+		v.next = -1
+		p.last = v.id
+	} else {
+		first.pre = v.id
+		v.next = first.id
+	}
+	p.items[v.id] = v
+	return v.id
+}
+
+//PushFront 在最前面添加
+func (p *Queue) PushWithId(id int, val interface{}) int {
+	defer p.l.Unlock()
+	p.l.Lock()
+	v := new(queueItem)
+	v.next = -1
+	v.id = id
+	v.value = val
+	last := p.get(p.last)
+	p.last = v.id
+	if last == nil {
+		v.pre = -1
+		v.next = -1
+		p.first = v.id
+	} else {
+		last.next = v.id
+		v.pre = last.id
+	}
+	p.items[v.id] = v
+	return v.id
+}
+
+//Push 在最后添加
+func (p *Queue) Push(val interface{}) int {
+	defer p.l.Unlock()
+	p.l.Lock()
+	v := new(queueItem)
+	v.next = -1
+	v.id = p.builderID()
+	v.value = val
+	last := p.get(p.last)
+	p.last = v.id
+	if last == nil {
+		v.pre = -1
+		v.next = -1
+		p.first = v.id
+	} else {
+		last.next = v.id
+		v.pre = last.id
+	}
+	p.items[v.id] = v
+	return v.id
+}
+
+func (p *Queue) EachLoop(fun func(index int, item interface{}) bool) {
+	defer p.l.Unlock()
+	p.l.Lock()
+	var index int
+	if p.Count() > 0 {
+		item := p.get(p.first)
+		for item != nil {
+			if fun(index, item.value) {
+				break
+			}
+			item = p.get(item.next)
+			index++
+		}
+	}
+}
+func (p *Queue) Each(fun func(index int, item interface{})) {
+	defer p.l.Unlock()
+	p.l.Lock()
+	var index int
+	if p.Count() > 0 {
+		item := p.get(p.first)
+		for item != nil {
+			fun(index, item.value)
+			item = p.get(item.next)
+			index++
+		}
+	}
+}

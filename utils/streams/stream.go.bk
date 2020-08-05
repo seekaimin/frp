@@ -1,0 +1,16 @@
+package stream
+
+import (
+//"net"
+)
+
+//buffer  处理对象
+type Stream interface {
+	Length() uint64                             //获取有效数据长度
+	Flush()                                     //清除缓冲区  将缓冲区写入设备
+	Read(buf []uint8, start int64, end int64)   //读取数据
+	Seek(begin uint64, flag []uint8) uint64     //从指定位置开始查询  并且返回当前位置
+	SetLength(pos uint64)                       //设置其实位置
+	Write(buf []uint8, start int64, end uint64) //写入数据
+	Dispose()                                   //释放资源
+}
